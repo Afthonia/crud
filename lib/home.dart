@@ -33,8 +33,6 @@ class _HomeState extends State<Home> {
   bool _isLoaded = false;
   bool _isConnected = false;
   SharedPreferences? prefs;
-  String pattern = '';
-  RegExp reg = new RegExp(r'${(pattern)*}');
 
   var apiController = TextEditingController();
   var nameController = TextEditingController();

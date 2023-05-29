@@ -33,7 +33,7 @@ class DioConnect {
       for (var item in resp.data) {
         users.add(UserModel.fromJson(item));
       }
-      return users as List<UserModel>;
+      return users;
     } on DioError {
       throw 'the data couldn\'t get fetched';
     }

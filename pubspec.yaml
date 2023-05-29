@@ -43,6 +43,7 @@ dependencies:
       url: https://github.com/HasanAlqaisi/flutter_datetime_picker.git
 
   url_launcher: ^6.1.11
+  flutter_easyloading: ^3.0.5
 
 dev_dependencies:
   flutter_test:

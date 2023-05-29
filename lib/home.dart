@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:get/get.dart';
-//import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_datetime_picker/flutter_datetime_picker.dart'
     as dpicker;
 import 'package:url_launcher/url_launcher.dart';
@@ -14,6 +17,7 @@ void main() {
     title: 'Crud API Example App',
     initialRoute: '/home',
     getPages: appRoutes(),
+    builder: EasyLoading.init(),
   ));
 }
 
@@ -25,131 +29,55 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  bool isConnected = false;
+  bool _isApiSaved = false;
+  bool _isLoaded = false;
+  bool _isConnected = false;
+  SharedPreferences? prefs;
+  String pattern = '';
+  RegExp reg = new RegExp(r'${(pattern)*}');
 
   var apiController = TextEditingController();
   var nameController = TextEditingController();
   var imageController = TextEditingController();
   DateTime dateController = DateTime.now();
+  var searchController = TextEditingController();
 
   DioConnect? dioConnect;
 
-  // substitute :)
-  List<Map<String, dynamic>> userss = [
-    {
-      "_id": "64688f52786dbb03e878a910",
-      "image":
-          "assets/profile.png",
-      "name": "ayşe",
-      "age": 19,
-      "sign": "Virgo"
-    },
-    {
-      "_id": "64688f52786dbb03e878a910",
-      "image":
-          "assets/profile.png",
-      "name": "ayşe",
-      "age": 19,
-      "sign": "Virgo"
-    },
-    {
-      "_id": "64688f52786dbb03e878a910",
-      "image":
-          "assets/profile.png",
-      "name": "ayşe",
-      "age": 19,
-      "sign": "Virgo"
-    },
-    {
-      "_id": "64688f52786dbb03e878a910",
-      "image":
-          "assets/profile.png",
-      "name": "ayşe",
-      "age": 19,
-      "sign": "Virgo"
-    },
-    {
-      "_id": "64688f52786dbb03e878a910",
-      "image":
-          "assets/profile.png",
-      "name": "ayşe",
-      "age": 19,
-      "sign": "Virgo"
-    },
-    {
-      "_id": "64688f52786dbb03e878a910",
-      "image":
-          "assets/profile.png",
-      "name": "ayşe",
-      "age": 19,
-      "sign": "Virgo"
-    },
-    {
-      "_id": "64688f52786dbb03e878a910",
-      "image":
-          "assets/profile.png",
-      "name": "ayşe",
-      "age": 19,
-      "sign": "Virgo"
-    },
-    {
-      "_id": "64688f52786dbb03e878a910",
-      "image":
-          "assets/profile.png",
-      "name": "ayşe",
-      "age": 19,
-      "sign": "Virgo"
-    },
-    {
-      "_id": "64688f52786dbb03e878a910",
-      "image":
-          "assets/profile.png",
-      "name": "ayşe",
-      "age": 19,
-      "sign": "Virgo"
-    },
-    {
-      "_id": "64688f52786dbb03e878a910",
-      "image":
-          "assets/profile.png",
-      "name": "ayşe",
-      "age": 19,
-      "sign": "Virgo"
-    },
-    {
-      "_id": "64688f52786dbb03e878a910",
-      "image":
-          "assets/profile.png",
-      "name": "ayşe",
-      "age": 19,
-      "sign": "Virgo"
-    },
-    {
-      "_id": "64688f52786dbb03e878a910",
-      "image":
-          "assets/profile.png",
-      "name": "ayşe",
-      "age": 19,
-      "sign": "Virgo"
-    },
-    {
-      "_id": "64688f52786dbb03e878a910",
-      "image":
-          "assets/profile.png",
-      "name": "ayşe",
-      "age": 19,
-      "sign": "Virgo"
-    },
-  ];
-
   var users = [];
+  var searchResults = [];
 
   @override
   void initState() {
     super.initState();
 
-    imageController.text =
-        'assets/profile.png';
+    isApiSaved();
+    getData(apiController.text);
+    imageController.text = 'assets/profile.png';
+  }
+
+  void isApiSaved() async {
+    prefs = await SharedPreferences.getInstance();
+    String? key = prefs?.getString('key');
+    bool apiSaved = (key != null) ? true : false;
+
+    if (apiSaved) {
+      apiController.text = key;
+      dioConnect = DioConnect(key);
+      if (key != '' && await dioConnect!.getResponse()) {
+        setState(() {
+          _isConnected = true;
+          showNotifier('Connected');
+          getData(key);
+          _isApiSaved = true;
+        });
+      } else {
+        setState(() {
+          _isConnected = false;
+          apiController.text = '';
+        });
+      }
+    }
   }
 
   void _showAPIConnect() {
@@ -217,17 +145,35 @@ class _HomeState extends State<Home> {
               alignment: Alignment.bottomRight,
               child: ElevatedButton(
                   onPressed: () async {
+                    setState(() {
+                      _isLoaded = false;
+                    });
+                    EasyLoading.show(status: 'Loading...');
                     dioConnect = DioConnect(apiController.text);
-                    if (apiController.text != '' && await dioConnect!.getResponse()) {
+                    if (apiController.text != '' &&
+                        await dioConnect!.getResponse()) {
                       setState(() {
-                        isConnected = true;
+                        _isConnected = true;
+                        _isLoaded = true;
+                        _isApiSaved = true;
                       });
                     } else {
                       setState(() {
-                        isConnected = false;
+                        _isConnected = false;
                       });
                     }
+                    if (_isLoaded) {
+                      EasyLoading.dismiss();
+                    }
                     Get.back();
+
+                    if (_isConnected) {
+                      SharedPreferences prefs =
+                          await SharedPreferences.getInstance();
+                      await prefs.setString('key', apiController.text);
+                    } else {
+                      showNotifier('Error');
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.teal.shade400,
@@ -254,8 +200,8 @@ class _HomeState extends State<Home> {
 
       setState(() {
         users = resp as List<UserModel>;
+        searchResults = users;
       });
-
     } catch (e) {
       print('the error is: $e');
     }
@@ -412,20 +358,29 @@ class _HomeState extends State<Home> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.teal.shade400,
                     ),
-                    onPressed: () {
-                     setState(() {
-                        dioConnect!.postData({
-                        'image': imageController.text,
-                        'name': nameController.text,
-                        'age': DateTime.now().year - dateController.year,
-                        'sign': UserModel.getSign(
-                            dateController.month, dateController.day),
+                    onPressed: () async {
+                      setState(() {
+                        _isLoaded = false;
                       });
+                      EasyLoading.show();
+
+
+                      setState(() {
+                        dioConnect!.postData({
+                          'image': imageController.text,
+                          'name': nameController.text,
+                          'age': DateTime.now().year - dateController.year,
+                          'sign': UserModel.getSign(
+                              dateController.month, dateController.day),
+                        });
                         nameController.text = '';
                         dateController = DateTime.now();
                         getData(apiController.text);
                       });
-
+                      _isLoaded = true;
+                      if (_isLoaded) {
+                        EasyLoading.dismiss();
+                      }
                       //print(users);
 
                       Get.back();
@@ -594,17 +549,19 @@ class _HomeState extends State<Home> {
                     ),
                     onPressed: () {
                       setState(() {
-                        dioConnect!.updateData(users[chosenIndex].id,
-                          {
-                            'image': imageController.text,
-                            'name': nameController.text,
-                            'age': DateTime.now().year - dateController.year,
-                            'sign': 'Taurus',
-                          }
-                      );
+                        dioConnect!.updateData(users[chosenIndex].id, {
+                          'image': imageController.text,
+                          'name': nameController.text,
+                          'age': DateTime.now().year - dateController.year,
+                          'sign': 'Taurus',
+                        });
+
+                        print(users[chosenIndex]);
                         nameController.text = '';
                         dateController = DateTime.now();
                         getData(apiController.text);
+
+                        searchResults = users;
                       });
 
                       print(users);
@@ -622,6 +579,41 @@ class _HomeState extends State<Home> {
     );
   }
 
+  void _deleteData(int chosenIndex) {
+    setState(() {
+      dioConnect!.deleteData(users[chosenIndex].id, {
+        'image': imageController.text,
+        'name': nameController.text,
+        'age': DateTime.now().year - dateController.year,
+        'sign': UserModel.getSign(dateController.month, dateController.day),
+      });
+      users.remove(users[chosenIndex]);
+      searchResults = users;
+    });
+  }
+
+  void showNotifier(String message) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        Future.delayed(const Duration(seconds: 2), () {
+          Navigator.of(context).pop(true);
+        });
+        return AlertDialog(
+          alignment: Alignment.bottomCenter,
+          content: Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+            ),
+          ),
+          backgroundColor: Colors.black,
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -630,83 +622,122 @@ class _HomeState extends State<Home> {
         centerTitle: true,
         backgroundColor: Colors.teal.shade400,
       ),
-      body: isConnected
-          ? (users.isEmpty
-              ? const Center()
-              : Card(
-                  child: ListView.builder(
-                  itemBuilder: (BuildContext context, index) {
-                    return Card(
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        side: const BorderSide(
-                          color: Colors.grey,
-                        ),
-                        borderRadius: BorderRadius.circular(15.0),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(7.0),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: MediaQuery.of(context).size.width/4,
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(50.0),
-                                child: Image.asset('${(users[index]).image}'),
-                              ),
-                            ),
-                            const VerticalDivider(indent: 8.0),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(users[index].name),
-                                Text('${users[index].age} years old'),
-                                Text(users[index].sign),
-                              ],
-                            ),
-                            Expanded(
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  IconButton(
+      body: _isConnected
+          ? (_isApiSaved
+              ? (users.isEmpty
+                  ? const NoData()
+                  : Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: SearchBar(
+                            elevation: MaterialStateProperty.all(0.0),
+                            controller: searchController,
+                            side: MaterialStateBorderSide.resolveWith(
+                                (Set<MaterialState> states) {
+                              return const BorderSide(color: Colors.black);
+                            }),
+                            hintText: 'Search Anything',
+                            leading: const Icon(Icons.search),
+                            trailing: List.of(
+                              {
+                                IconButton(
                                     onPressed: () {
-                                      _showUpdateForm(index);
-                                    },
-                                    icon: const Icon(Icons.mode_edit_outlined),
-                                    color: Colors.grey,
-                                  ),
-                                  IconButton(
-                                    onPressed: () {
-
                                       setState(() {
-                                        dioConnect!.deleteData(users[index].id, {
-                                        'image': imageController.text,
-                                        'name': nameController.text,
-                                        'age': DateTime.now().year - dateController.year,
-                                        'sign': UserModel.getSign(
-                                            dateController.month, dateController.day),
-                                      });
+                                        searchController.text = '';
                                       });
                                     },
-                                    icon: const Icon(Icons.delete_forever),
+                                    icon: const Icon(Icons.close)),
+                              },
+                            ),
+                            onChanged: (value) {
+                              setState(() {
+                                searchResults = users.where((element) => element.name.toLowerCase().startsWith(value.toLowerCase())).toList();
+                              });
+                              },
+                          ),
+                        ),
+                        Expanded(
+                          child: ListView.builder(
+                            itemBuilder: (BuildContext context, index) {
+                              return Card(
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  side: const BorderSide(
                                     color: Colors.grey,
                                   ),
-                                ],
-                              ),
-                            ),
-                          ],
+                                  borderRadius: BorderRadius.circular(15.0),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(7.0),
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                        width:
+                                            MediaQuery.of(context).size.width /
+                                                4,
+                                        child: ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(50.0),
+                                          child: Image.asset('${(searchResults[index]).image}'),
+                                        ),
+                                      ),
+                                      const VerticalDivider(indent: 8.0),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(searchResults[index].name),
+                                          Text('${searchResults[index].age} years old'),
+                                          Text(searchResults[index].sign),
+                                        ],
+                                      ),
+                                      Expanded(
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.end,
+                                          children: [
+                                            IconButton(
+                                              onPressed: () {
+                                                _showUpdateForm(index);
+                                              },
+                                              icon: const Icon(
+                                                  Icons.mode_edit_outlined),
+                                              color: Colors.grey,
+                                            ),
+                                            IconButton(
+                                              onPressed: () {
+                                                _deleteData(index);
+                                              },
+                                              icon: const Icon(
+                                                  Icons.delete_forever),
+                                              color: Colors.grey,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                            itemCount: searchResults.length,
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                  itemCount: users.length,
-                )))
+                      ],
+                    ))
+              : Center(
+                  child: CircularProgressIndicator(
+                    color: Colors.teal.shade400,
+                  ),
+                ))
           : const NoConnection(),
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           FloatingActionButton.small(
-            backgroundColor: isConnected ? Colors.teal.shade400 : Colors.red,
+            backgroundColor: _isConnected ? Colors.teal.shade400 : Colors.red,
             onPressed: () {
               _showAPIConnect();
             },
@@ -714,10 +745,10 @@ class _HomeState extends State<Home> {
           ),
           const SizedBox(height: 20),
           FloatingActionButton(
-            backgroundColor: isConnected
+            backgroundColor: _isConnected
                 ? Colors.teal.shade400
                 : const Color.fromARGB(255, 160, 159, 159),
-            onPressed: isConnected
+            onPressed: _isConnected
                 ? () {
                     _showSignForm();
                   }
@@ -743,4 +774,15 @@ class NoConnection extends StatelessWidget {
   }
 }
 
+class NoData extends StatelessWidget {
+  const NoData({Key? key}) : super(key: key);
 
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      body: Center(
+        child: Text('No Data!'),
+      ),
+    );
+  }
+}
